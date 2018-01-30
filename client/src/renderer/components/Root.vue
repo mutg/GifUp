@@ -6,8 +6,9 @@
     >
     <v-card>
       <v-card-text>
-        <v-text-field label="Room name"></v-text-field>
-        <v-btn block>OK</v-btn>        
+        <v-text-field v-model="room_name" label="Room name"></v-text-field>
+        <div>{{join_room_error}}</div>
+        <v-btn @click="joinRoom(room_name)" block>OK</v-btn>        
       </v-card-text>
     </v-card>
     </v-dialog>
@@ -16,7 +17,13 @@
     </div>
     <v-layout v-else column>
       <v-flex>
-        In room #¤"#¤ <v-btn>leave</v-btn> <v-btn @click="openWindow()">#dev open win</v-btn>
+        <span class="headline"><span style="">{{currentRoomName}}</span></span>
+        <v-btn
+          flat
+          @click="leave()"
+        >
+        leave
+        </v-btn> <v-btn @click="sendMessage()">#dev send message</v-btn>
       </v-flex>
       <v-flex class="scrollable" xs12>
         <v-list>
@@ -42,29 +49,55 @@
 </template>
 
 <script>
-export default {
-  methods: {
-    openWindow () {
-      let BrowserWindow = this.$electron.remote.BrowserWindow
-      var win = new BrowserWindow(
-        {
-          height: 200,
-          width: 200,
-          resizable: false,
-          frame: false,
-          parent: this.$electron.remote.getCurrentWindow()
-        }
-      )
-    }
-  },
-  data () {
-    return {
-      joinroom: false,
-      fab: false,
-      inRoom: true
+  import SocketIO from '@/services/socketio'
+
+  export default {
+    computed: {
+      currentRoomName () {
+        return this.$store.state.Room.room_name
+      },
+      inRoom () {
+        return this.$store.state.Room.inRoom
+      },
+      roomMessages () {
+        return this.$store.state.Room.messages
+      }
+    },
+    methods: {
+      sendMessage () {
+        SocketIO.emit('image-posted', 'https://randomuser.me/api/portraits/men/'+Math.round(Math.random())+'.jpg', (error) => {
+          if (error) {
+            console.log(error)
+          }
+        })
+      },
+      leave () {
+        SocketIO.emit('leave-room', this.currentRoomName, () => {
+          this.$store.dispatch('leaveRoom', this.currentRoomName)
+        })
+      },
+      joinRoom (room_name) {
+        SocketIO.emit('join-room', room_name, (error) => {
+          if (error) {
+            this.join_room_error = error
+          } else {
+            this.joinroom = false
+            this.$store.dispatch('setRoomName', room_name)
+          }
+        })
+      }
+    },
+    data () {
+      return {
+        join_room_error: null,
+        room_name: null,
+        joinroom: false,
+        fab: false,
+      }
+    },
+    watch: {
     }
   }
-}
 </script>
 
 <style scoped>

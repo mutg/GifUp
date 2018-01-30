@@ -14,13 +14,12 @@
         <router-view></router-view>
       </transition>
     </v-content>
-   
   </v-app>
 </template>
 
 <script>
-
-
+  import SocketIO from '@/services/socketio'
+  SocketIO.open()
   export default {
     name: 'gifup',
     computed: {
@@ -40,7 +39,35 @@
       }
     },
     created () {
-      this.browserwindow = this.$electron.remote.getCurrentWindow()      
+      SocketIO.removeAllListeners()
+      this.browserwindow = this.$electron.remote.getCurrentWindow()
+      SocketIO.on('image-posted', (data) => {
+        console.log(data)
+        this.$store.dispatch('addMessage', data)
+
+        let BrowserWindow = this.$electron.remote.BrowserWindow
+        var win = new BrowserWindow(
+          {
+            height: 200,
+            width: 200,
+            resizable: false,
+            frame: true,
+            parent: this.$electron.remote.getCurrentWindow()
+          }
+        )
+
+        let url = process.env.NODE_ENV === 'development'
+          ? `http://localhost:9080`
+          : `file://${__dirname}/index.html`
+          
+        win.loadURL(`${url}/image.html`)
+
+      })
+
+      SocketIO.on('disconnect', (reason) => {
+        console.log(reason)
+        this.$store.dispatch('leaveRoom')
+      })
     }
   }
 </script>
