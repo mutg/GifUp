@@ -142,7 +142,9 @@ Object.keys(rendererConfig.entry).forEach(key => {
 if (process.env.NODE_ENV !== 'production') {
   rendererConfig.plugins.push(
     new webpack.DefinePlugin({
-      '__static': `"${path.join(__dirname, '../static').replace(/\\/g, '\\\\')}"`
+      '__static': `"${path.join(__dirname, '../static').replace(/\\/g, '\\\\')}"`,
+      '__PORT__': process.env.PORT,
+      '__API__': `"http://localhost:3000"`
     })
   )
 }
@@ -163,7 +165,8 @@ if (process.env.NODE_ENV === 'production') {
       }
     ]),
     new webpack.DefinePlugin({
-      'process.env.NODE_ENV': '"production"'
+      'process.env.NODE_ENV': '"production"',
+      '__API__': `"http://gifup.tuliq.pw/api"`      
     }),
     new webpack.LoaderOptionsPlugin({
       minimize: true

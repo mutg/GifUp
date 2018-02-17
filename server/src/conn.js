@@ -1,13 +1,6 @@
-function validateRoomName (roomname) {
-  if (!roomname) return 'No room name specified!'
-  if (roomname === '') return 'You need to enter a room name!'
-  if (roomname.length > 20) return 'The room name is too long!'
-  if (roomname.length <= 3) return 'The room name is too short!'
-  return null
-}
 
 module.exports = (conn) => {
-  console.log('client connected')
+console.log(`client ${conn.id}`)
 
   conn.on('image-posted', function(url, cb) {
     console.log('client posted image')
@@ -46,5 +39,9 @@ module.exports = (conn) => {
 
   conn.on('disconnect', function (reason) {
     console.log('client disconnected')
+  })
+
+  conn.on('error', function(error) {
+    console.log(`Error: ${error}`)
   })
 }

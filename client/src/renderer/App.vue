@@ -10,18 +10,89 @@
       </div>
     </v-system-bar>
     <v-content style="position: relative;">
-      <transition name="scale-fade">
-        <router-view></router-view>
+      <transition :duration="350" name="scale-fade">
+        <router-view
+          @join-room="joinRoom"
+          @leave-room="leaveRoom"
+          @send-message="sendMessage"
+        />
       </transition>
     </v-content>
   </v-app>
 </template>
 
 <script>
-  import SocketIO from '@/services/socketio'
-  SocketIO.open()
+
+/*
+      console.log(data)
+      this.$store.dispatch('addMessage', data)
+
+      let BrowserWindow = this.$electron.remote.BrowserWindow
+      var win = new BrowserWindow(
+        {
+          height: 10,
+          width: 10,
+          resizable: false,
+          frame: false
+        }
+      )
+
+      let url = process.env.NODE_ENV === 'development'
+        ? `http://localhost:${process.env.PORT}`
+        : `file://${__dirname}`
+        
+      win.loadURL(`${url}/image.html`)
+
+      win.webContents.on('did-finish-load', () => {
+        win.webContents.send('load-image', data.url)
+      })
+*/
+  import Socket from '@/services/Socket'
+
+
   export default {
-    name: 'gifup',
+    name: 'App',
+    methods: {
+      joinRoom (session) {
+        this.$store.dispatch('setSession', session)
+        this.socket = new Socket(session.token)
+        this.socket.on('message', this.onMessage)
+        this.socket.on('close', function() {
+
+        })
+      },
+      sendMessage (data) {
+        this.socket.send(data)
+      },
+      leaveRoom () {
+        this.$store.dispatch('clearSession')
+        this.socket.close()
+      },
+      onMessage (message) {
+
+        let BrowserWindow = this.$electron.remote.BrowserWindow
+        var win = new BrowserWindow(
+          {
+            height: 10,
+            width: 10,
+            resizable: false,
+            frame: false
+          }
+        )
+
+        let url = process.env.NODE_ENV === 'development'
+          ? `http://localhost:${process.env.PORT}`
+          : `file://${__dirname}`
+          
+        win.loadURL(`${url}/image.html`)
+
+        win.webContents.on('did-finish-load', () => {
+          win.webContents.send('load-image', message.data.url)
+        })
+        this.$store.dispatch('addMessage', message)
+
+      }
+    },
     computed: {
       maximized () {
         return this.browserwindow.isMaximized()
@@ -30,44 +101,11 @@
     data () {
       return {
         browserwindow: null,
-        items: [
-          {
-            title: 'Super chat',
-            icon: null
-          }
-        ]
+        socket: null
       }
     },
     created () {
-      SocketIO.removeAllListeners()
       this.browserwindow = this.$electron.remote.getCurrentWindow()
-      SocketIO.on('image-posted', (data) => {
-        console.log(data)
-        this.$store.dispatch('addMessage', data)
-
-        let BrowserWindow = this.$electron.remote.BrowserWindow
-        var win = new BrowserWindow(
-          {
-            height: 200,
-            width: 200,
-            resizable: false,
-            frame: true,
-            parent: this.$electron.remote.getCurrentWindow()
-          }
-        )
-
-        let url = process.env.NODE_ENV === 'development'
-          ? `http://localhost:9080`
-          : `file://${__dirname}/index.html`
-          
-        win.loadURL(`${url}/image.html`)
-
-      })
-
-      SocketIO.on('disconnect', (reason) => {
-        console.log(reason)
-        this.$store.dispatch('leaveRoom')
-      })
     }
   }
 </script>

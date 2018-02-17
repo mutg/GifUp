@@ -17,22 +17,29 @@
     </div>
     <v-layout v-else column>
       <v-flex>
-        <span class="headline"><span style="">{{currentRoomName}}</span></span>
+        <span class="headline"><span style=""> {{ currentRoomName }} </span></span>
         <v-btn
           flat
           @click="leave()"
         >
         leave
-        </v-btn> <v-btn @click="sendMessage()">#dev send message</v-btn>
+        </v-btn>
       </v-flex>
       <v-flex class="scrollable" xs12>
         <v-list>
-          <v-list-tile v-for="i in 20" :key="i">
+          <v-list-tile v-for="(message, index) in roomMessages" :key="index">
             <v-list-tile-content>
-              <span>Test {{i}}</span>
+              <a @click="clickurl" :href="message.data.url">{{message.data.url}}</a>
             </v-list-tile-content>
           </v-list-tile>
         </v-list>
+      </v-flex>
+      <v-flex>
+        <v-layout>
+          <v-flex xs12>
+            <v-text-field v-model="link" @keypress="keypress" single-line label="URL" />
+          </v-flex>
+        </v-layout>
       </v-flex>
     </v-layout>
     <v-btn
@@ -49,41 +56,61 @@
 </template>
 
 <script>
-  import SocketIO from '@/services/socketio'
+  import Api from '@/services/Api'
+  import axios from 'axios'
+  import https from 'https'
 
   export default {
     computed: {
       currentRoomName () {
-        return this.$store.state.Room.room_name
+        return this.$store.state.Session.room.name
       },
       inRoom () {
-        return this.$store.state.Room.inRoom
+        return this.$store.state.Session.inRoom
       },
       roomMessages () {
-        return this.$store.state.Room.messages
+        return this.$store.state.Session.room.messages
       }
     },
     methods: {
-      sendMessage () {
-        SocketIO.emit('image-posted', 'https://randomuser.me/api/portraits/men/'+Math.round(Math.random())+'.jpg', (error) => {
-          if (error) {
-            console.log(error)
+      keypress (event) {
+        if(event.key === "Enter") {
+          let link = this.link
+          this.link = ''
+          try {
+            https.get(link, (res) => {
+              if (
+                res.headers['content-type'] === 'image/jpeg' || 
+                res.headers['content-type'] === 'image/jpg' ||
+                res.headers['content-type'] === 'image/gif' ||
+                res.headers['content-type'] === 'image/png'
+              ) {
+                this.sendMessage(link)
+              }
+            })
+          } catch (error) {
+            
           }
-        })
+          
+        }
+      },
+      clickurl (event) {
+        event.preventDefault();
+        this.$electron.shell.openExternal(event.target.href);
+      },
+      sendMessage (message) {
+        this.$emit('send-message', { url: message } )
       },
       leave () {
-        SocketIO.emit('leave-room', this.currentRoomName, () => {
-          this.$store.dispatch('leaveRoom', this.currentRoomName)
-        })
+        this.$emit('leave-room')
       },
       joinRoom (room_name) {
-        SocketIO.emit('join-room', room_name, (error) => {
-          if (error) {
-            this.join_room_error = error
-          } else {
-            this.joinroom = false
-            this.$store.dispatch('setRoomName', room_name)
-          }
+        Api.joinRoom(room_name).then( response => {
+          this.$emit('join-room', response.data.session)          
+          this.joinroom = false
+        })
+        .catch( error => {
+          this.join_room_error = error.response.data.error
         })
       }
     },
@@ -93,6 +120,7 @@
         room_name: null,
         joinroom: false,
         fab: false,
+        link: ''
       }
     },
     watch: {
